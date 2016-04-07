@@ -1,0 +1,53 @@
+<ol class="breadcrumb">
+  <li><a href="/">Index</a></li>
+  <li><a href="/CorporationsSearch">Corporations Search</a></li>
+  <li class="active">Real Estates Search</li>
+</ol>
+
+<div class="font">
+    <h2 align="center"><u>Real Estates Search</u></h2>
+    <br/>
+    <form id="REsearchForm">
+        <div align="center" class="form-group">
+            <input type="text" class="form-control width-input" ng-model="params.code" placeholder="Code">
+        </div>
+        <div align="center" class="form-group">
+            <input type="text" class="form-control width-input" ng-model="params.state" placeholder="State">
+        </div>
+        <div align="center" class="form-group">
+            <input type="text" class="form-control width-input" ng-model="params.city" placeholder="City">
+        </div>
+        <div align="center" class="form-group">
+            <input type="text" class="form-control width-input" ng-model="params.street" placeholder="Street">
+        </div>
+        <div align="center" class="form-group">
+            <input type="text" class="form-control width-input" ng-model="params.zip" placeholder="Zip">
+        </div>
+
+        <div align="center" class="form-group">
+            <button ng-click="searchRE()" class="btn btn-primary btn-sn">Search</button>
+            <button class="btn btn-default btn-sn" ng-click="reset()">Cancel</button>
+        </div>
+
+        <div align="center" class="table-responsive">
+            <table align="center" class="table-condensed table-striped">
+                <h2><u>Results</u></h2>
+                <tr>
+                    <th>Code</th>
+                    <th>State</th>
+                    <th>City</th>
+                    <th>Street</th>
+                    <th>Zip</th>
+                </tr>
+                <tr ng-repeat="realEstate in realEstates | orderBy: 'code'">
+                    <td>{{realEstate.code}}</td>
+                    <td>{{realEstate.state}}</td>
+                    <td>{{realEstate.city}}</td>
+                    <td>{{realEstate.street}}</td>
+                    <td>{{realEstate.zip}}</td>
+                </tr>
+            </table>
+        </div>
+    </form>
+</div>
+

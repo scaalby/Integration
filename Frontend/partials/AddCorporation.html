@@ -1,0 +1,22 @@
+<ul class="nav nav-tabs nav-justified">
+        <li role="presentation" class="active"><a href="/AddCorporation">New Corporation</a></li>
+        <li role="presentation"><a href="/CorporationsSearch">Search a corporation</a></li>
+    </ul>
+<div class="font">
+    <h2 align="center"><u>New Corporation</u></h2>
+    <br/>
+    <form >
+        <div align="center" class="form-group">
+            <input type="text" class="form-control width-input" ng-model="params.name" id="name-corporation" placeholder="Name">
+        </div>
+        <div align="center" class="form-group">
+            <input type="text" class="form-control width-input" ng-model="params.nation" id="nation-corporation" placeholder="Nation">
+        </div>
+        <div class="form-group">
+            <div align="center">
+                <button ng-click="add()" class="btn btn-primary btn-sn">Save</button>
+                <button ng-click="reset()" class="btn btn-default btn-sn">Cancel</button>
+            </div>
+        </div>
+    </form>
+</div>

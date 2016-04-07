@@ -1,0 +1,473 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
+using System.Transactions;
+using CsQuery.Utility;
+using MicroservicesSpike.Managers;
+using MicroservicesSpike.Models;
+using MicroservicesSpike.Modules;
+using MicroservicesSpike.Repositories;
+using MongoDB.Bson;
+using MongoDB.Driver;
+using MongoDB.Driver.Builders;
+using Moq;
+using Nancy;
+using Nancy.Responses;
+using Nancy.Responses.Negotiation;
+using Nancy.Testing;
+using Newtonsoft.Json;
+using NUnit.Framework;
+using Browser = Nancy.Testing.Browser;
+using HttpStatusCode = Nancy.HttpStatusCode;
+
+namespace MicroServicesSpike.Test
+{
+    public class RepositoryTest
+    {
+        public Mock<IRepository> _repositoryMock;
+        public Mock<IFilterManager> _filterManager;
+        public Mock<IAddCorporationManager> _filterAddManager;
+        public string _json;
+        public Browser _browser;
+        public List<Corporation> _corpoList;
+        public Corporation corpo;
+        public MongoCollection<Corporation> _corporations;
+        MongoClient _client;
+        MongoServer _server;
+        MongoDatabase _database;
+
+
+        [SetUp]
+        public void SetUp()
+        {
+            string connection = "mongodb://localhost:27017";
+            _client = new MongoClient(connection);
+            _server = _client.GetServer();
+            _database = _server.GetDatabase("local", WriteConcern.Unacknowledged);
+            _corporations = _database.GetCollection<Corporation>("Corporations");
+
+            var corpo = new Corporation
+            {
+
+
+                Id = ObjectId.Parse("564db279b99f725971d81658"),
+                Name = "MockNome",
+                Nation = "MockNation",
+                RealEstates = new List<RealEstate>()
+                    {
+                        new RealEstate()
+                        {
+                            city = "MockCity",
+                            code = 123,
+                            state = "MockState",
+                            street = "MockStreet",
+                            zip = 123
+                        }
+                    }
+
+            };
+
+            _corpoList = new List<Corporation>()
+            {
+                //new Corporation()
+                //{
+                //    Id = ObjectId.Parse("564db279b99f725971d81658"),
+                //    Name = "MockNome",
+                //    Nation = "MockNation",
+                //    RealEstates = new List<RealEstate>()
+                //    {
+                //        new RealEstate()
+                //        {
+                //            city = "MockCity",
+                //            code = 123,
+                //            state = "MockState",
+                //            street = "MockStreet",
+                //            zip = 123
+                //        }
+                //    }
+                //},
+                new Corporation()
+                {
+                    Id = ObjectId.GenerateNewId(),
+                    Name = "MockNome2",
+                    Nation="MockNation2",
+                    RealEstates = new List<RealEstate>()
+                    {
+                        new RealEstate()
+                        {
+                            city = "MockCity2",
+                            code=456,
+                            state="MockState2",
+                            street="MockStreet2",
+                            zip=456
+                        }
+                    }
+                }
+            };
+            _corpoList.Add(corpo);
+
+            _repositoryMock = new Mock<IRepository>();
+
+            _repositoryMock.Setup(x => x.AddCorporation(It.IsAny<Corporation>())).Returns(new ObjectId("564db279b99f725971d81658"));
+
+            _repositoryMock.Setup(x => x.AddRealEstate(It.IsAny<string>(), It.IsAny<RealEstate>()))
+                //.Returns(new RealEstate());
+                .Returns(true);
+
+            _repositoryMock.Setup(x => x.GetAllCorporations()).Returns(_corpoList);
+
+            _repositoryMock.Setup(x => x.GetCorporation(It.IsAny<ObjectId>())).Returns(_corpoList.Find(x => x.Id == corpo.Id));
+
+            _repositoryMock.Setup(x => x.GetCorporation(It.IsAny<string>()))
+                .Returns(_corpoList.Find(x => x.Id == corpo.Id));
+
+            _repositoryMock.Setup(x => x.RemoveCorporation(It.IsAny<string>()));
+
+            _repositoryMock.Setup(x => x.UpdateCorporation(It.IsAny<string>(), It.IsAny<Corporation>()))
+                .Returns(true);
+
+            _filterManager = new Mock<IFilterManager>();
+
+            _filterManager.Setup(x => x.FilterCorporation(It.IsAny<List<Corporation>>(), It.IsAny<Corporation>()))
+                .Returns(It.IsAny<List<Corporation>>());
+
+            _filterManager.Setup(x => x.FilterRealEstates(It.IsAny<Corporation>(), It.IsAny<RealEstate>()))
+                .Returns(It.IsAny<List<RealEstate>>());
+
+            _filterAddManager = new Mock<IAddCorporationManager>();
+
+            _filterAddManager.Setup(x => x.AddCorporation(It.IsAny<IRepository>(), It.IsAny<Corporation>()))
+                .Returns(new ObjectId("564db279b99f725971d81658"));
+
+            _filterAddManager.Setup(
+                x => x.AddRealEstate(It.IsAny<IRepository>(), It.IsAny<string>(), It.IsAny<RealEstate>()))
+                .Returns(true);
+
+            _filterAddManager.Setup(
+                x => x.UpdateCorporation(It.IsAny<IRepository>(), It.IsAny<string>(), It.IsAny<Corporation>()))
+                .Returns(true);
+
+            _filterAddManager.Setup(
+                x =>
+                    x.UpdateRealEstate(It.IsAny<IRepository>(), It.IsAny<string>(), It.IsAny<int>(),
+                        It.IsAny<RealEstate>()))
+                .Returns(true);
+
+        }
+
+        [Test]
+        public void GetAllCorporations_shouldReturnListOfCorporations()
+        {
+            var corporations = _repositoryMock.Object.GetAllCorporations();
+            var count = corporations.Count();
+            Assert.AreEqual(count, _corpoList.Count());
+        }
+
+        [Test]
+        public void GetCorporation_ShouldReturnOneCorporation()
+        {
+            ObjectId Id = ObjectId.Parse("564db279b99f725971d81658");
+            var cor = _repositoryMock.Object.GetAllCorporations();
+            var corporations = cor.FirstOrDefault(x => x.Id == Id);
+            var crp = _repositoryMock.Object.GetCorporation(Id);
+
+            Assert.AreEqual(corporations.Id, crp.Id);
+
+        }
+
+        [Test]
+        public void GetCorporation_ShouldReturnOneCorporationPassingStringId()
+        {
+            string Id = "564db279b99f725971d81658";
+            var cor = _repositoryMock.Object.GetAllCorporations();
+            var corporations = cor.FirstOrDefault(x => x.Id.ToString() == Id);
+            var crp = _repositoryMock.Object.GetCorporation(Id);
+
+
+            Assert.AreEqual(corporations.Id, crp.Id);
+        }
+
+        [Test]
+        public void DeleteCorporation_ShouldDeleteOneCorporation()
+        {
+            var count = _repositoryMock.Object.GetAllCorporations().Count();
+            var corporation = new Corporation
+            {
+                Id = ObjectId.Parse("564db279b99f725971d12345"),
+                Name = "MockToBeDeleted",
+                Nation = "MockToBeDeleted"
+            };
+            _repositoryMock.Object.AddCorporation(corporation);
+            _repositoryMock.Object.RemoveCorporation("564db279b99f725971d12345");
+
+            var afterRemove = _repositoryMock.Object.GetAllCorporations().Count();
+            Assert.AreEqual(afterRemove, count);
+
+        }
+
+        [Test]
+        public void UpdateCorporation_ShouldReturnCorporationUpdated()
+        {
+            ObjectId id = ObjectId.Parse("564db279b99f725971d81658");
+            string Name = "MockNameUpdated";
+            var cor = _corpoList.Find(x => x.Id == id);
+            IMongoQuery query = Query.EQ("_id", id);
+            using (TransactionScope ts = new TransactionScope())
+            {
+                IMongoUpdate update = Update
+                    .Set("_id", id)
+                    .Set("Name", Name)
+                    .Set("Nation", cor.Nation);
+
+                Corporation ToUpdate = new Corporation
+                {
+                    Id = cor.Id,
+                    Name = Name,
+                    Nation = cor.Nation
+                };
+                _corporations.Update(query, update);
+                _repositoryMock.Object.UpdateCorporation(id.ToString(), ToUpdate);
+
+                Assert.AreEqual(true, ToUpdate.Name == Name);
+
+            }
+        }
+
+
+
+        [Test]
+        public void GetCorporation_should_return_200()
+        {
+            var browser = new Browser(cfg =>
+            {
+                cfg.Module<FilterModule>();
+                cfg.Dependency<IRepository>(_repositoryMock.Object);
+                cfg.Dependency<IFilterManager>(new FilterManager());
+            }, to => to.Accept("application/json"));
+
+            var result = browser.Get(@"http://localhost:59536/GetSingleCorp", with =>
+            {
+                with.HttpRequest();
+                with.Accept(new MediaRange("application/json"));
+
+            });
+
+            Assert.AreEqual(HttpStatusCode.OK, result.StatusCode);
+        }
+
+        [Test]
+        public void GetCorporation_should_return_json()
+        {
+            var _json = _corpoList.ToJson();
+            var browser = new Browser(cfg =>
+            {
+                cfg.Module<FilterModule>();
+                cfg.Dependency(_repositoryMock.Object);
+                cfg.Dependency<IFilterManager>(new FilterManager());
+            }, to => to.Accept("application/json"));
+
+            var result = browser.Get(@"http://localhost:59536/GetSingleCorp", with =>
+           {
+               with.HttpRequest();
+               with.Accept(new MediaRange("application/json"));
+           });
+
+            var bodyResponse = result.Body.AsString();
+
+
+            Assert.AreEqual(HttpStatusCode.OK, result.StatusCode, "Body: " + result.Body.AsString());
+        }
+
+
+        [Test]
+        public void GetAllCorporations_ShouldReturn200()
+        {
+            var browser = new Browser(cfg =>
+            {
+                cfg.Module<FilterModule>();
+                cfg.Dependency<IRepository>(_repositoryMock.Object);
+                cfg.Dependency<IFilterManager>(_filterManager.Object);
+            }, to => to.Accept("application/json"));
+
+            var response = browser.Get(@"http://localhost:59536/GetCorporations", with =>
+            {
+                with.HttpRequest();
+                with.Accept(new MediaRange("application/json"));
+            });
+            Assert.AreEqual(Nancy.HttpStatusCode.OK, response.StatusCode);
+        }
+
+      
+
+        [Test]
+        public void AddCorporation_should_return_201()
+        {
+            var browser = new Browser(cfg =>
+            {
+                cfg.Module<AddModule>();
+                cfg.Dependency<IRepository>(_repositoryMock.Object);
+                cfg.Dependency<IAddCorporationManager>(_filterAddManager.Object);
+            }, to => to.Accept("application/json"));
+
+            var response = browser.Post(@"http://localhost:59536/AddCorporation", with =>
+           {
+               with.HttpRequest();
+               with.FormValue("Name", "Mock");
+               with.FormValue("Nation", "MockNation");
+           });
+
+            var bodyResponse = response.Body.AsString();
+
+
+            Assert.AreEqual(Nancy.HttpStatusCode.Created, response.StatusCode);
+        }
+
+
+        [Test]
+        public void AddRealEstate_should_return_201()
+        {
+            var browser = new Browser(cfg =>
+            {
+                cfg.Module<AddModule>();
+                cfg.Dependency<IRepository>(_repositoryMock.Object);
+                cfg.Dependency<IAddCorporationManager>(_filterAddManager.Object);
+            }, to => to.Accept("application/json"));
+
+            var response = browser.Put(@"http://localhost:59536/AddRealEstate/564db279b99f725971d81658", with =>
+            {
+                with.HttpRequest();
+                with.FormValue("code", "12345");
+                with.FormValue("street", "MockStreet");
+                with.FormValue("city", "MockCity");
+                with.FormValue("state", "MockState");
+                with.FormValue("zip", "112345");
+                with.Accept(new MediaRange("application/json"));
+            });
+
+            var bodyResponse = response.Body.AsString();
+
+            Assert.AreEqual(Nancy.HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Test]
+        public void GetRealEstate_ShouldReturn200()
+        {
+            var browser = new Browser(cfg =>
+            {
+                cfg.Module<FilterModule>();
+                cfg.Dependency<IRepository>(_repositoryMock.Object);
+                cfg.Dependency<IFilterManager>(new FilterManager());
+            }, to => to.Accept("application/json"));
+            var response = browser.Get(@"http://localhost:59536/GetRealEstates/564db279b99f725971d81658", with =>
+            {
+                with.HttpRequest();
+                //with.FormValue("code", "456");
+                //with.FormValue("street", "MockStreet2");
+                //with.FormValue("city", "MockCity2");
+                //with.FormValue("state", "MockState2");
+                //with.FormValue("zip", "456");
+                with.Accept(new MediaRange("application/json"));
+            });
+
+            var bodyResponse = response.Body.AsString();
+
+            Assert.AreEqual(Nancy.HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Test]
+        public void DeleteCorporation_ShouldReturn200()
+        {
+            var boostrapper = new Bootstrapper();
+            var browser = new Browser(boostrapper, to => to.Accept("application/json"));
+            var response = browser.Delete(@"http://localhost:59536/DeleteCorporation/564db279b99f725971d81658", with =>
+            {
+                with.HttpRequest();
+                with.Accept(new MediaRange("application/json"));
+            });
+
+            var x = response.ReasonPhrase;
+
+            Assert.AreEqual(Nancy.HttpStatusCode.OK, response.StatusCode);
+
+        }
+
+        [Test]
+        public void UpdateCorporation_ShouldReturn200()
+        {
+            var browser = new Browser(cfg =>
+            {
+                cfg.Module<AddModule>();
+                cfg.Dependency<IRepository>(_repositoryMock.Object);
+                cfg.Dependency<IAddCorporationManager>(_filterAddManager.Object);
+            }, to => to.Accept("application/json"));
+
+            var response = browser.Put(@"http://localhost:59536/UpdateCorporation/564db279b99f725971d81658", with =>
+            {
+                with.HttpRequest();
+                with.FormValue("Name", "MockNameUpdated");
+                with.Accept(new MediaRange("application/json"));
+            });
+
+            var x = response.Body.AsString();
+            Assert.AreEqual(Nancy.HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Test]
+        public void UpdateRealEstate_ShouldReturn200()
+        {
+            var browser = new Browser(cfg =>
+            {
+                cfg.Module<AddModule>();
+                cfg.Dependency<IRepository>(_repositoryMock.Object);
+                cfg.Dependency<IAddCorporationManager>(_filterAddManager.Object);
+            }, to => to.Accept("application/json"));
+
+            var response = browser.Put(@"http://localhost:59536/UpdateRealEstate/564db279b99f725971d81658/0", with =>
+            {
+                with.HttpRequest();
+                with.FormValue("street", "MockStreetUpdated");
+                with.Accept(new MediaRange("application/json"));
+            });
+
+            var x = response.Body.AsString();
+            Assert.AreEqual(Nancy.HttpStatusCode.OK, response.StatusCode);
+
+        }
+
+        //[Test]
+        //public void GetSingleCorp_should_return_json()
+        //{
+        //    var bootstrapper = new Bootstrapper();
+        //    var browser = new Browser(bootstrapper, defaults: to => to.Accept("application/json"));
+
+        //    var result = browser.Get(@"http://localhost:59536/GetSingleCorp", with =>
+        //    {
+        //        with.HttpRequest();
+        //        with.Body(_json, "Corporation");
+        //        with.Header("content-type", "text/html");
+        //        with.Accept(new MediaRange("application/json"));
+        //    });
+
+        //    Assert.AreEqual(HttpStatusCode.OK, result.StatusCode, "Body: " + result.Body.AsString());
+        //}
+
+        // metodo in via di sviluppo //
+        //[Test]
+        //public void GetRealEstate_should_return_json()
+        //{
+        //    var bootstrapper = new Bootstrapper();
+        //    var browser = new Browser(bootstrapper, defaults: to => to.Accept("application/json"));
+
+        //    var result = browser.Get(@"http://localhost:59563/GetRealEstates", with =>
+        //    {
+        //        with.HttpRequest();
+        //    });
+        //    Assert.AreEqual(HttpStatusCode.OK, result.StatusCode);
+        //}
+    }
+}

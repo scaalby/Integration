@@ -1,0 +1,63 @@
+<ul class="nav nav-tabs nav-justified">
+        <li role="presentation"><a href="/AddCorporation">New Corporation</a></li>
+        <li role="presentation" class="active"><a href="/CorporationsSearch">Search a corporation</a></li>
+    </ul>
+<div class="font">
+    <h2 align="center"><u>Corporations search</u></h2>
+    <br/>
+    <div align="center" class="form-group">
+        <input class="form-control width-input" ng-model="Name" placeholder="Insert corporation name">
+    </div>
+    <div align="center" class="form-group">
+        <input class="form-control width-input" ng-model="Nation" placeholder="Insert corporation nation">
+    </div>
+    <div class="form-group">
+        <div align="center">
+            <button ng-click="searchCorp()" class="btn btn-primary btn-sn">Search</button>
+        </div>
+    </div>
+
+    <div align="center" class="table-responsive">
+        <table align="center" class="table-condensed table-striped">
+            <h2><u>Results</u></h2>
+            <tr>
+                <th>Name</th>
+                <th>Nation</th>
+            </tr>
+            <tr ng-repeat="corporation in corporations">
+                <td>
+                    <a editable-text="corporation.Name" e-form="textBtnForm" 
+                       href="/RealEstatesSearch/{{corporation.Id}}" onaftersave="editCorporation(corporation)">
+                           {{corporation.Name}}
+                        </a>
+                </td>
+                <td>
+                    <a editable-text="corporation.Nation" e-form="textBtnForm" 
+                       href="/RealEstatesSearch/{{corporation.Id}}">
+                           {{corporation.Nation}}
+                        </a>
+                </td>
+
+                <td style="white-space: nowrap">
+                    <form editable-form name="textBtnForm" ng-show="textBtnForm.$visible" class="form-buttons form-inline">
+                        <button class="btn btn-primary btn-sn" ng-disabled="textBtnForm.$waiting" 
+                                class="btn btn-primary">
+                            <span class="glyphicon glyphicon-floppy-saved" aria-hidden="true"></span>
+                        </button>
+                        <button type="button" ng-disabled="textBtnForm.$waiting" ng-click="textBtnForm.$cancel()" class="btn btn-default btn-sn">
+                            <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+                        </button>
+                    </form>
+                    <div class="buttons" ng-show="!textBtnForm.$visible">
+                        <button class="btn btn-primary btn-sn" ng-click="textBtnForm.$show()">
+                            <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>
+                        </button>
+                        <button class="btn btn-danger btn-sn" ng-click="deleteCorporation(corporation.Id, $index)">
+                            <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
